@@ -76,6 +76,40 @@ const updateUser = async (id, updatedData) => {
     return sendQuery(usersCol.updateOne({ _id: new ObjectId(id) }, { $set: updatedData }));
 }
 
+const getUserRecords = async () => {
+    try {
+        const usersCol = await connDbCollection(usersCollection);
+        return sendQuery(
+            usersCol.aggregate([
+                {
+                    $lookup: {
+                        from: dataCollection,  
+                        localField: "username",  
+                        foreignField: "userid",  
+                        as: "user_records"
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$username",  
+                        recordsCount: { $sum: { $size: "$user_records" } }  
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        username: "$_id",
+                        recordsCount: 1
+                    }
+                }
+            ]),
+            true
+        );
+    } catch (error) {
+        console.error("Error executing user records count query:", error);
+        throw error;
+    }
+};
 
 
 // Connect to database when the application starts
@@ -99,5 +133,6 @@ export {
     insertUser,
     getAllUsers,
     deleteUser,
-    updateUser
+    updateUser,
+    getUserRecords
 }
